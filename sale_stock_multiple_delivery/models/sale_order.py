@@ -35,6 +35,17 @@ class SaleOrderLine(models.Model):
 
             group_id = line._get_procurement_group()
 
+            ################## if the multiple_delivery_order boolean is true then make the move
+            # not identical if for different product (create new group)
+            if line.order_id.multiple_delivery_order:
+                same_prod_proc = [x for x in procurements if line.product_id.id == x.product_id.id]
+                if same_prod_proc:
+                    group_id = line._get_procurement_group()
+                else:
+                    group_id = self.env['procurement.group'].create(line._prepare_procurement_group_vals())
+                    line.order_id.procurement_group_id = group_id
+            #############
+
             if not group_id:
                 group_id = self.env['procurement.group'].create(line._prepare_procurement_group_vals())
                 line.order_id.procurement_group_id = group_id
@@ -49,16 +60,7 @@ class SaleOrderLine(models.Model):
                 if updated_vals:
                     group_id.write(updated_vals)
 
-            ################## if the multiple_delivery_order boolean is true then make the move
-            # not identical if for diffrent product (create new group)
-            if line.order_id.multiple_delivery_order:
-                same_prod_proc = [x for x in procurements if line.product_id.id == x.product_id.id]
-                if same_prod_proc:
-                    group_id = line._get_procurement_group()
-                else:
-                    group_id = self.env['procurement.group'].create(line._prepare_procurement_group_vals())
-                    line.order_id.procurement_group_id = group_id
-            #############
+
             values = line._prepare_procurement_values(group_id=group_id)
             product_qty = line.product_uom_qty - qty
 
