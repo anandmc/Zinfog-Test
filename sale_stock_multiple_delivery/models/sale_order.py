@@ -36,8 +36,9 @@ class SaleOrderLine(models.Model):
             group_id = line._get_procurement_group()
 
             ################## if the boolean is true then make the move not identical if for diffrent product (create new group)
-            same_prod_proc = [x for x in procurements if line.product_id.id == x.product_id.id]
+
             if line.order_id.multiple_delivery_order:
+                same_prod_proc = [x for x in procurements if line.product_id.id == x.product_id.id]
                 if same_prod_proc:
                     group_id = line._get_procurement_group()
                 else:
