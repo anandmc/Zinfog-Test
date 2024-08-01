@@ -35,11 +35,16 @@ class SaleOrderLine(models.Model):
 
             group_id = line._get_procurement_group()
 
-            ################## if the boolean is true then make the move not identical(create new group)
+            ################## if the boolean is true then make the move not identical if for diffrent product (create new group)
+            same_prod_proc = [x for x in procurements if line.product_id.id == x.product_id.id]
             if line.order_id.multiple_delivery_order:
-                group_id = self.env['procurement.group'].create(line._prepare_procurement_group_vals())
-                line.order_id.procurement_group_id = group_id
+                if same_prod_proc:
+                    group_id = line._get_procurement_group()
+                else:
+                    group_id = self.env['procurement.group'].create(line._prepare_procurement_group_vals())
+                    line.order_id.procurement_group_id = group_id
             #############
+
             if not group_id:
                 group_id = self.env['procurement.group'].create(line._prepare_procurement_group_vals())
                 line.order_id.procurement_group_id = group_id
@@ -60,23 +65,11 @@ class SaleOrderLine(models.Model):
             line_uom = line.product_uom
             quant_uom = line.product_id.uom_id
             product_qty, procurement_uom = line_uom._adjust_uom_quantities(product_qty, quant_uom)
-            ########## check product allready exist in procurement if exist
-            ########## delete the tupple and create new one with product qty
-            same_prod_proc = [x for x in procurements if line.product_id.id == x.product_id.id]
-            if same_prod_proc and line.order_id.multiple_delivery_order:
-                product_qty = sum(
-                    [x.product_qty for x in procurements if line.product_id.id == x.product_id.id]) + product_qty
-                procurements.remove(same_prod_proc[0])
-                procurements.append(self.env['procurement.group'].Procurement(
-                    line.product_id, product_qty, procurement_uom,
-                    line.order_id.partner_shipping_id.property_stock_customer,
-                    line.product_id.display_name, line.order_id.name, line.order_id.company_id, values))
-            else:
-                procurements.append(self.env['procurement.group'].Procurement(
-                    line.product_id, product_qty, procurement_uom,
-                    line.order_id.partner_shipping_id.property_stock_customer,
-                    line.product_id.display_name, line.order_id.name, line.order_id.company_id, values))
-            ######################
+            procurements.append(self.env['procurement.group'].Procurement(
+                line.product_id, product_qty, procurement_uom,
+                line.order_id.partner_shipping_id.property_stock_customer,
+                line.product_id.display_name, line.order_id.name, line.order_id.company_id, values))
+
         if procurements:
             procurement_group = self.env['procurement.group']
             if self.env.context.get('import_file'):
